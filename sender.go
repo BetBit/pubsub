@@ -2,7 +2,7 @@ package pubsub
 
 import (
 	"fmt"
-	pb "github.com/BetBit/pubsub/proto"
+	pb "github.com/BetBit/pubsub"
 	"sync"
 )
 
