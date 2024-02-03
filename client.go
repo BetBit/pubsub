@@ -3,7 +3,7 @@ package pubsub
 import (
 	"context"
 	"fmt"
-	pb "github.com/BetBit/pubsub"
+	pb "github.com/BetBit/pubsub/proto"
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
