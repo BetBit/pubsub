@@ -18,6 +18,61 @@ type Pub struct {
 	timerStop        chan struct{}
 }
 
+func (this *Pub) Sub(eventName string, cb func(ctx context.Context, payload []byte)) *Pub {
+	this.subEventName = eventName
+	this.subEventCallback = cb
+	return this
+}
+
+func (this *Pub) Do() error {
+	defer func() {
+		this.handleDelete()
+		if this.timerStop != nil {
+			this.timerStop <- struct{}{}
+		}
+	}()
+
+	this.timerStart()
+	this.sender.Send(this.evt)
+	if this.subEventCallback != nil {
+		this.sender.Send(&pb.Event{
+			Id:        this.evt.Id,
+			AgentId:   this.evt.AgentId,
+			EventName: "_.check.subscribe",
+			Payload:   []byte(this.subEventName),
+			Timestamp: time.Now().Unix(),
+		})
+	}
+
+	err := <-this.errorChan
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (this *Pub) eventForbidden() {
+	this.errorChan <- fmt.Errorf("event forbidden")
+	this.subEventCallback = nil
+}
+
+func (this *Pub) subscribeForbidden() {
+	this.errorChan <- fmt.Errorf("subscribe forbidden")
+	this.subEventCallback = nil
+}
+
+func (this *Pub) messageComplete() {
+	if this.subEventCallback != nil {
+		return
+	}
+	this.errorChan <- nil
+}
+
+func (this *Pub) subscribeAccept() {
+	//this.sender.Send(this.evt)
+}
+
 func (this *Pub) handleMessage(msg *pb.Event) {
 	if this.subEventCallback == nil {
 		return
@@ -45,12 +100,6 @@ func (this *Pub) handleMessage(msg *pb.Event) {
 	}()
 }
 
-func (this *Pub) Sub(eventName string, cb func(ctx context.Context, payload []byte)) *Pub {
-	this.subEventName = eventName
-	this.subEventCallback = cb
-	return this
-}
-
 func (this *Pub) handleDelete() {
 	if this.subEventCallback != nil {
 		return
@@ -59,45 +108,7 @@ func (this *Pub) handleDelete() {
 	this.deleteChan <- struct{}{}
 }
 
-func (this *Pub) subscribeForbidden() {
-	this.errorChan <- fmt.Errorf("subscribe forbidden")
-	this.subEventCallback = nil
-}
-
-func (this *Pub) Do() error {
-	defer func() {
-		this.handleDelete()
-		if this.timerStop != nil {
-			this.timerStop <- struct{}{}
-		}
-	}()
-	this.timerStart()
-
-	if this.subEventCallback != nil {
-		this.sender.Send(&pb.Event{
-			Id:        this.evt.Id,
-			AgentId:   this.evt.AgentId,
-			EventName: "_.check.subscribe",
-			Payload:   []byte(this.subEventName),
-			Timestamp: time.Now().Unix(),
-		})
-	} else {
-		this.sender.Send(this.evt)
-	}
-
-	err := <-this.errorChan
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (this *Pub) cancel() {
-	this.errorChan <- nil
-}
-
-func (this *Pub) messageComplete() {
 	this.errorChan <- nil
 }
 
@@ -125,15 +136,6 @@ func (this *Pub) timerStart() {
 			}
 		}
 	}()
-}
-
-func (this *Pub) eventForbidden() {
-	this.errorChan <- fmt.Errorf("event forbidden")
-	this.subEventCallback = nil
-}
-
-func (this *Pub) subscribeAccept() {
-	this.sender.Send(this.evt)
 }
 
 type pub struct {
