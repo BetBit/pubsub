@@ -35,7 +35,7 @@ func (this *Pub) handleMessage(msg *pb.Event) {
 	mt := Meta{
 		ID:        msg.Id,
 		EventName: msg.EventName,
-		Project:   msg.AgentId,
+		Project:   msg.ProjectId,
 		Timestamp: msg.Timestamp,
 	}
 
@@ -76,7 +76,7 @@ func (this *Pub) Do() error {
 	if this.subEventCallback != nil {
 		this.sender.Send(&pb.Event{
 			Id:        this.evt.Id,
-			AgentId:   this.evt.AgentId,
+			ProjectId: this.evt.ProjectId,
 			EventName: "_.check.subscribe",
 			Payload:   []byte(this.subEventName),
 			Timestamp: time.Now().Unix(),

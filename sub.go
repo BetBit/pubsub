@@ -52,7 +52,7 @@ func (this *Sub) handleMessage(msg *pb.Event) {
 		mt := Meta{
 			ID:        msg.Id,
 			EventName: msg.EventName,
-			Project:   msg.AgentId,
+			Project:   msg.ProjectId,
 			Timestamp: msg.Timestamp,
 		}
 
