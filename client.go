@@ -12,14 +12,16 @@ import (
 )
 
 type Client struct {
-	clientId string
-	agentId  string
-	token    string
-	attempts int
-	conn     *grpc.ClientConn
-	pub      *pub
-	sub      *sub
-	sender   *sender
+	clientId   string
+	projectId  string
+	token      string
+	attempts   int
+	conn       *grpc.ClientConn
+	pub        *pub
+	sub        *sub
+	sender     *sender
+	events     []string
+	subscribes []string
 }
 
 // SetError - Передать ошибку с событием
@@ -56,9 +58,9 @@ func (this *Client) Pub(ctx context.Context, eventName string, payload []byte) *
 		id = uuid.New().String()
 	}
 
-	agentId := mt.Project
-	if agentId == "" {
-		agentId = this.agentId
+	projectId := mt.Project
+	if projectId == "" {
+		projectId = this.projectId
 	}
 
 	errMsg := ""
@@ -68,7 +70,7 @@ func (this *Client) Pub(ctx context.Context, eventName string, payload []byte) *
 
 	evt := &pb.Event{
 		Id:        id,
-		AgentId:   agentId,
+		ProjectId: projectId,
 		EventName: eventName,
 		Error:     errMsg,
 		Payload:   payload,
@@ -121,7 +123,7 @@ func (this *Client) Sub(ctx context.Context, eventName string, cb func(ctx conte
 					timer.Reset(time.Second * 5)
 					this.sender.Send(&pb.Event{
 						Id:        id,
-						AgentId:   this.agentId,
+						ProjectId: this.projectId,
 						EventName: "_.check.subscribe",
 						Payload:   []byte(eventName),
 						Timestamp: time.Now().Unix(),
@@ -206,9 +208,11 @@ func (this *Client) connect() {
 	fmt.Println("Connecting...")
 
 	auth := &Auth{
-		clientId: this.clientId,
-		agentId:  this.agentId,
-		token:    this.token,
+		clientId:   this.clientId,
+		projectId:  this.projectId,
+		token:      this.token,
+		events:     this.events,
+		subscribes: this.subscribes,
 	}
 
 	stream, err := c.Channel(auth.WithContext(ctx))
@@ -249,17 +253,21 @@ type Options struct {
 	Token       string
 	Conn        *grpc.ClientConn
 	ResendTimer time.Duration
+	Events      []string
+	Subscribes  []string
 }
 
 func New(opt Options) *Client {
 	m := &Client{
-		clientId: opt.ClientID,
-		agentId:  opt.Project,
-		token:    opt.Token,
-		conn:     opt.Conn,
-		pub:      newPub(),
-		sub:      newSub(),
-		sender:   newSender(),
+		clientId:   opt.ClientID,
+		projectId:  opt.Project,
+		token:      opt.Token,
+		conn:       opt.Conn,
+		pub:        newPub(),
+		sub:        newSub(),
+		sender:     newSender(),
+		events:     opt.Events,
+		subscribes: opt.Subscribes,
 	}
 	m.connect()
 	return m
